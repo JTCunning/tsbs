@@ -29,6 +29,10 @@ func GetTarget(format string) targets.ImplementedTarget {
 		return cassandra.NewTarget()
 	case constants.FormatClickhouse:
 		return clickhouse.NewTarget()
+	case constants.FormatClickhousePromQL:
+		// ClickHouse ingests time series data through the Prometheus
+		// remote-write protocol, so the load path reuses the prometheus target.
+		return prometheus.NewTarget()
 	case constants.FormatCrateDB:
 		return crate.NewTarget()
 	case constants.FormatInflux:

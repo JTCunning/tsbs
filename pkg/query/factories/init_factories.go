@@ -4,6 +4,7 @@ import (
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/akumuli"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/cassandra"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/clickhouse"
+	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/clickhousepromql"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/cratedb"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/influx"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/mongo"
@@ -22,6 +23,7 @@ func InitQueryFactories(config *config.QueryGeneratorConfig) map[string]interfac
 	factories[constants.FormatClickhouse] = &clickhouse.BaseGenerator{
 		UseTags: config.ClickhouseUseTags,
 	}
+	factories[constants.FormatClickhousePromQL] = &clickhousepromql.BaseGenerator{}
 	factories[constants.FormatCrateDB] = &cratedb.BaseGenerator{}
 	factories[constants.FormatInflux] = &influx.BaseGenerator{}
 	factories[constants.FormatTimescaleDB] = &timescaledb.BaseGenerator{
