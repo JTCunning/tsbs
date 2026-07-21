@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/blagojts/viper"
@@ -24,12 +25,14 @@ import (
 
 // Program option vars:
 var (
-	vmURLs []string
+	vmURLs             []string
+	allowFailedQueries bool
 )
 
 // Global vars:
 var (
-	runner *query.BenchmarkRunner
+	runner        *query.BenchmarkRunner
+	failedQueries uint64
 )
 
 // Parse args:
@@ -39,6 +42,10 @@ func init() {
 
 	pflag.String("urls", "http://localhost:8428",
 		"Comma-separated list of VictoriaMetrics ingestion URLs(single-node or VMSelect)")
+	pflag.Bool("allow-failed-queries", false,
+		"Continue benchmarking when a query fails (e.g. the endpoint does not "+
+			"implement a PromQL function used by the query). Failed queries are "+
+			"logged to stderr, excluded from statistics, and counted in a summary.")
 
 	pflag.Parse()
 
@@ -54,11 +61,15 @@ func init() {
 		log.Fatalf("missing `urls` flag")
 	}
 	vmURLs = strings.Split(urls, ",")
+	allowFailedQueries = viper.GetBool("allow-failed-queries")
 	runner = query.NewBenchmarkRunner(config)
 }
 
 func main() {
 	runner.Run(&query.HTTPPool, newProcessor)
+	if n := atomic.LoadUint64(&failedQueries); n > 0 {
+		fmt.Printf("failed queries (excluded from statistics): %d\n", n)
+	}
 }
 
 func newProcessor() query.Processor {
@@ -83,6 +94,11 @@ func (p *processor) ProcessQuery(q query.Query, isWarm bool) ([]*query.Stat, err
 	hq := q.(*query.HTTP)
 	lag, err := p.do(hq)
 	if err != nil {
+		if allowFailedQueries {
+			atomic.AddUint64(&failedQueries, 1)
+			fmt.Fprintf(os.Stderr, "query failed (continuing): %s: %s\n", q.HumanLabelName(), err)
+			return nil, nil
+		}
 		return nil, err
 	}
 	stat := query.GetStat()
