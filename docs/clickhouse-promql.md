@@ -21,38 +21,24 @@ is no dedicated loader binary:
 
 ## Server setup
 
-The ClickHouse server needs a TimeSeries table and Prometheus protocol
-handlers for remote write and the HTTP query API. Example server
-configuration:
+The ClickHouse server needs a TimeSeries table and the Prometheus HTTP API
+mounted on the main HTTP port. The `prometheus_api_v1` handler serves all
+`/api/v1` protocols (remote write, `query`, `query_range`, ...) under one
+`url_prefix`. Example server configuration:
 
 ```xml
 <clickhouse>
-    <prometheus>
-        <port>9092</port>
-        <handlers>
-            <write_rule>
-                <url>/api/v1/write</url>
-                <handler>
-                    <type>write</type>
-                    <table>default.prometheus</table>
-                </handler>
-            </write_rule>
-            <query_rule>
-                <url>/api/v1/query</url>
-                <handler>
-                    <type>query</type>
-                    <table>default.prometheus</table>
-                </handler>
-            </query_rule>
-            <query_range_rule>
-                <url>/api/v1/query_range</url>
-                <handler>
-                    <type>query</type>
-                    <table>default.prometheus</table>
-                </handler>
-            </query_range_rule>
-        </handlers>
-    </prometheus>
+    <http_port>8123</http_port>
+    <http_handlers>
+        <rule>
+            <url_prefix>/prometheus/api/v1</url_prefix>
+            <handler>
+                <type>prometheus_api_v1</type>
+                <table>default.prometheus</table>
+            </handler>
+        </rule>
+        <defaults/>
+    </http_handlers>
 </clickhouse>
 ```
 
@@ -91,7 +77,7 @@ configured above:
 $ tsbs_load config --target=clickhouse-promql --data-source=FILE
 $ # edit config.yaml:
 $ #   data-source.file.location: /tmp/clickhouse-promql-data
-$ #   loader.db-specific.adapter-write-url: http://localhost:9092/api/v1/write
+$ #   loader.db-specific.adapter-write-url: http://localhost:8123/prometheus/api/v1/write
 $ tsbs_load load clickhouse-promql --config=./config.yaml
 ```
 
@@ -131,14 +117,15 @@ so results are not numerically comparable with other databases until
 The generated queries are relative HTTP requests
 (`/api/v1/query_range?query=...&start=...&end=...&step=...`), executed by
 prepending a base URL. Use `tsbs_run_queries_clickhouse_promql` with
-`--urls` pointing at the ClickHouse Prometheus protocols port:
+`--urls` pointing at the configured `url_prefix` minus the `/api/v1`
+suffix:
 
 ```text
 $ cat /tmp/clickhouse-promql-cpu-max-all-1-queries.gz | gunzip | \
     tsbs_run_queries_clickhouse_promql --workers=8 \
-    --urls=http://localhost:9092
+    --urls=http://localhost:8123/prometheus
 ```
 
-If the handlers in the server configuration do not set a fixed `table`, the
-target table can be passed per request through the `database` and `table`
-query parameters.
+If the handler in the server configuration does not set a fixed `table`,
+the target table can be passed per request through the `database` and
+`table` query parameters.

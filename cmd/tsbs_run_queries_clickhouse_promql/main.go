@@ -38,8 +38,8 @@ func init() {
 	var config query.BenchmarkRunnerConfig
 	config.AddToFlagSet(pflag.CommandLine)
 
-	pflag.String("urls", "http://localhost:9092",
-		"Comma-separated list of ClickHouse Prometheus protocol URLs")
+	pflag.String("urls", "http://localhost:8123/prometheus",
+		"Comma-separated list of base URLs at which the ClickHouse Prometheus HTTP API is mounted")
 
 	pflag.Parse()
 
