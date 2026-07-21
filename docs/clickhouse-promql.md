@@ -6,16 +6,16 @@ TimeSeries table. The `clickhouse-promql` format benchmarks that API. It is
 separate from the `clickhouse` format, which benchmarks SQL queries over the
 ClickHouse native protocol.
 
-The `clickhouse-promql` format covers query generation only. There is no
-dedicated loader or query runner binary:
+The `clickhouse-promql` format covers query generation and running. There
+is no dedicated loader binary:
 
 - Data is loaded through the Prometheus remote-write protocol. The format
   reuses the `prometheus` target, so `tsbs_generate_data` and `tsbs_load`
   produce and send Prometheus remote-write data.
 - Generated queries are standard Prometheus HTTP API requests
-  (`GET /api/v1/query_range`), so any HTTP-based PromQL runner works. The
-  examples below use `tsbs_run_queries_victoriametrics`, which sends each
-  query to a configurable base URL.
+  (`GET /api/v1/query_range`), executed with
+  `tsbs_run_queries_clickhouse_promql`, which sends each query to a
+  configurable base URL.
 
 **This should be read *after* the main README.**
 
@@ -129,12 +129,12 @@ aborting the run.
 
 The generated queries are relative HTTP requests
 (`/api/v1/query_range?query=...&start=...&end=...&step=...`), executed by
-prepending a base URL. Use `tsbs_run_queries_victoriametrics` with `--urls`
-pointing at the ClickHouse Prometheus protocols port:
+prepending a base URL. Use `tsbs_run_queries_clickhouse_promql` with
+`--urls` pointing at the ClickHouse Prometheus protocols port:
 
 ```text
 $ cat /tmp/clickhouse-promql-cpu-max-all-1-queries.gz | gunzip | \
-    tsbs_run_queries_victoriametrics --workers=8 \
+    tsbs_run_queries_clickhouse_promql --workers=8 \
     --urls=http://localhost:9092
 ```
 
@@ -146,7 +146,7 @@ line at the end of the run.
 
 ```text
 $ cat /tmp/clickhouse-promql-cpu-max-all-1-queries.gz | gunzip | \
-    tsbs_run_queries_victoriametrics --workers=8 \
+    tsbs_run_queries_clickhouse_promql --workers=8 \
     --urls=http://localhost:9092 --allow-failed-queries
 ```
 

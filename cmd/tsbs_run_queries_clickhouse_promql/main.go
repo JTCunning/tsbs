@@ -1,8 +1,13 @@
-// tsbs_run_queries_victoriametrics speed tests VictoriaMetrics using requests from stdin or file.
+// tsbs_run_queries_clickhouse_promql speed tests the ClickHouse Prometheus
+// HTTP API using requests from stdin or file.
 //
 // It reads encoded Query objects from stdin, and makes concurrent requests
 // to the provided HTTP endpoint. This program has no knowledge of the
 // internals of the endpoint.
+//
+// ClickHouse versions may not implement every PromQL function used by the
+// generated queries. Pass --allow-failed-queries to log and count those
+// failures instead of aborting the run on the first error.
 package main
 
 import (
@@ -14,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/blagojts/viper"
@@ -24,12 +30,14 @@ import (
 
 // Program option vars:
 var (
-	vmURLs []string
+	chURLs             []string
+	allowFailedQueries bool
 )
 
 // Global vars:
 var (
-	runner *query.BenchmarkRunner
+	runner        *query.BenchmarkRunner
+	failedQueries uint64
 )
 
 // Parse args:
@@ -37,8 +45,13 @@ func init() {
 	var config query.BenchmarkRunnerConfig
 	config.AddToFlagSet(pflag.CommandLine)
 
-	pflag.String("urls", "http://localhost:8428",
-		"Comma-separated list of VictoriaMetrics ingestion URLs(single-node or VMSelect)")
+	pflag.String("urls", "http://localhost:9092",
+		"Comma-separated list of ClickHouse Prometheus protocol URLs")
+	pflag.Bool("allow-failed-queries", false,
+		"Continue benchmarking when a query fails (e.g. the ClickHouse version "+
+			"under test does not implement a PromQL function used by the query). "+
+			"Failed queries are logged to stderr, excluded from statistics, and "+
+			"counted in a summary.")
 
 	pflag.Parse()
 
@@ -53,12 +66,16 @@ func init() {
 	if len(urls) == 0 {
 		log.Fatalf("missing `urls` flag")
 	}
-	vmURLs = strings.Split(urls, ",")
+	chURLs = strings.Split(urls, ",")
+	allowFailedQueries = viper.GetBool("allow-failed-queries")
 	runner = query.NewBenchmarkRunner(config)
 }
 
 func main() {
 	runner.Run(&query.HTTPPool, newProcessor)
+	if n := atomic.LoadUint64(&failedQueries); n > 0 {
+		fmt.Printf("failed queries (excluded from statistics): %d\n", n)
+	}
 }
 
 func newProcessor() query.Processor {
@@ -74,7 +91,7 @@ type processor struct {
 
 // query.Processor interface implementation
 func (p *processor) Init(workerNum int) {
-	p.url = vmURLs[workerNum%len(vmURLs)]
+	p.url = chURLs[workerNum%len(chURLs)]
 	p.prettyPrintResponses = runner.DoPrintResponses()
 }
 
@@ -83,6 +100,11 @@ func (p *processor) ProcessQuery(q query.Query, isWarm bool) ([]*query.Stat, err
 	hq := q.(*query.HTTP)
 	lag, err := p.do(hq)
 	if err != nil {
+		if allowFailedQueries {
+			atomic.AddUint64(&failedQueries, 1)
+			fmt.Fprintf(os.Stderr, "query failed (continuing): %s: %s\n", q.HumanLabelName(), err)
+			return nil, nil
+		}
 		return nil, err
 	}
 	stat := query.GetStat()
