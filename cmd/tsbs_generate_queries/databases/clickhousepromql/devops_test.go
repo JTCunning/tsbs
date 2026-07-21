@@ -22,35 +22,35 @@ func TestDevopsQueries(t *testing.T) {
 			fn: func(g *Devops, q *query.HTTP) {
 				g.GroupByTime(q, 1, 1, time.Hour)
 			},
-			expQuery: "max(max_over_time(cpu_usage_user{hostname='host_5'}[1m])) by (__name__)",
+			expQuery: "max(usage_user{hostname='host_5'}) by (__name__)",
 			expStep:  "60",
 		},
 		"GroupByTime_5_1": {
 			fn: func(g *Devops, q *query.HTTP) {
 				g.GroupByTime(q, 5, 1, time.Hour)
 			},
-			expQuery: "max(max_over_time(cpu_usage_user{hostname=~'host_5|host_9|host_3|host_1|host_7'}[1m])) by (__name__)",
+			expQuery: "max(usage_user{hostname=~'host_5|host_9|host_3|host_1|host_7'}) by (__name__)",
 			expStep:  "60",
 		},
 		"GroupByTime_5_5": {
 			fn: func(g *Devops, q *query.HTTP) {
 				g.GroupByTime(q, 5, 5, time.Hour)
 			},
-			expQuery: "max(max_over_time({__name__=~'cpu_(usage_user|usage_system|usage_idle|usage_nice|usage_iowait)', hostname=~'host_5|host_9|host_3|host_1|host_7'}[1m])) by (__name__)",
+			expQuery: "max({__name__=~'(usage_user|usage_system|usage_idle|usage_nice|usage_iowait)', hostname=~'host_5|host_9|host_3|host_1|host_7'}) by (__name__)",
 			expStep:  "60",
 		},
 		"GroupByTimeAndPrimaryTag": {
 			fn: func(g *Devops, q *query.HTTP) {
 				g.GroupByTimeAndPrimaryTag(q, 5)
 			},
-			expQuery: "avg(avg_over_time({__name__=~'cpu_(usage_user|usage_system|usage_idle|usage_nice|usage_iowait)'}[1h])) by (__name__, hostname)",
+			expQuery: "avg({__name__=~'(usage_user|usage_system|usage_idle|usage_nice|usage_iowait)'}) by (__name__, hostname)",
 			expStep:  "3600",
 		},
 		"MaxAllCPU": {
 			fn: func(g *Devops, q *query.HTTP) {
 				g.MaxAllCPU(q, 5, devops.MaxAllDuration)
 			},
-			expQuery: "max(max_over_time({__name__=~'cpu_(usage_user|usage_system|usage_idle|usage_nice|usage_iowait|usage_irq|usage_softirq|usage_steal|usage_guest|usage_guest_nice)', hostname=~'host_5|host_9|host_3|host_1|host_7'}[1h])) by (__name__)",
+			expQuery: "max({__name__=~'(usage_user|usage_system|usage_idle|usage_nice|usage_iowait|usage_irq|usage_softirq|usage_steal|usage_guest|usage_guest_nice)', hostname=~'host_5|host_9|host_3|host_1|host_7'}) by (__name__)",
 			expStep:  "3600",
 		},
 		"GroupByOrderByLimit": {
