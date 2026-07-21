@@ -139,18 +139,6 @@ $ cat /tmp/clickhouse-promql-cpu-max-all-1-queries.gz | gunzip | \
     --urls=http://localhost:9092
 ```
 
-By default the runner aborts on the first query error. To tolerate queries
-rejected by the endpoint (e.g. a PromQL function the ClickHouse version
-under test does not implement), pass `--allow-failed-queries`: failed
-queries are logged to stderr, excluded from the latency statistics, and
-counted in a summary line at the end of the run.
-
-```text
-$ cat /tmp/clickhouse-promql-cpu-max-all-1-queries.gz | gunzip | \
-    tsbs_run_queries_clickhouse_promql --workers=8 \
-    --urls=http://localhost:9092 --allow-failed-queries
-```
-
 If the handlers in the server configuration do not set a fixed `table`, the
 target table can be passed per request through the `database` and `table`
 query parameters.
