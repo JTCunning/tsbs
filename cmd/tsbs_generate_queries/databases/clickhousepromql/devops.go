@@ -41,16 +41,16 @@ func (d *Devops) HighCPUForHosts(qi query.Query, nHosts int) {
 // per minute for nhosts hosts,
 // e.g. in pseudo-PromQL:
 // max(
-// 	max_over_time(
-// 		{__name__=~"metric1|metric2...|metricN",hostname=~"hostname1|hostname2...|hostnameN"}[1m]
-// 	)
+// 	{__name__=~"metric1|metric2...|metricN",hostname=~"hostname1|hostname2...|hostnameN"}
 // ) by (__name__)
+// evaluated with a 60 second step.
 func (d *Devops) GroupByTime(qq query.Query, nHosts, numMetrics int, timeRange time.Duration) {
 	metrics := mustGetCPUMetricsSlice(numMetrics)
 	hosts := d.mustGetRandomHosts(nHosts)
 	selectClause := getSelectClause(metrics, hosts)
 	qi := &queryInfo{
-		query:    fmt.Sprintf("max(max_over_time(%s[1m])) by (__name__)", selectClause),
+		// max_over_time is not yet implemented in ClickHouse PromQL.
+		query:    fmt.Sprintf("max(%s) by (__name__)", selectClause),
 		label:    fmt.Sprintf("ClickHouse PromQL %d cpu metric(s), random %4d hosts, random %s by 1m", numMetrics, nHosts, timeRange),
 		interval: d.Interval.MustRandWindow(timeRange),
 		step:     "60",
@@ -62,10 +62,9 @@ func (d *Devops) GroupByTime(qq query.Query, nHosts, numMetrics int, timeRange t
 // e.g. in pseudo-PromQL:
 //
 // avg(
-// 	avg_over_time(
-// 		{__name__=~"metric1|metric2...|metricN"}[1h]
-// 	)
+// 	{__name__=~"metric1|metric2...|metricN"}
 // ) by (__name__, hostname)
+// evaluated with a 3600 second step.
 //
 // Resultsets:
 // double-groupby-1
@@ -75,7 +74,8 @@ func (d *Devops) GroupByTimeAndPrimaryTag(qq query.Query, numMetrics int) {
 	metrics := mustGetCPUMetricsSlice(numMetrics)
 	selectClause := getSelectClause(metrics, nil)
 	qi := &queryInfo{
-		query:    fmt.Sprintf("avg(avg_over_time(%s[1h])) by (__name__, hostname)", selectClause),
+		// avg_over_time is not yet implemented in ClickHouse PromQL.
+		query:    fmt.Sprintf("avg(%s) by (__name__, hostname)", selectClause),
 		label:    devops.GetDoubleGroupByLabel("ClickHouse PromQL", numMetrics),
 		interval: d.Interval.MustRandWindow(devops.DoubleGroupByDuration),
 		step:     "3600",
@@ -87,15 +87,15 @@ func (d *Devops) GroupByTimeAndPrimaryTag(qq query.Query, numMetrics int) {
 // e.g. in pseudo-PromQL:
 //
 // max(
-// 	max_over_time(
-// 		{hostname=~"hostname1|hostname2...|hostnameN"}[1h]
-// 	)
+// 	{hostname=~"hostname1|hostname2...|hostnameN"}
 // ) by (__name__)
+// evaluated with a 3600 second step.
 func (d *Devops) MaxAllCPU(qq query.Query, nHosts int, duration time.Duration) {
 	hosts := d.mustGetRandomHosts(nHosts)
 	selectClause := getSelectClause(devops.GetAllCPUMetrics(), hosts)
 	qi := &queryInfo{
-		query:    fmt.Sprintf("max(max_over_time(%s[1h])) by (__name__)", selectClause),
+		// max_over_time is not yet implemented in ClickHouse PromQL.
+		query:    fmt.Sprintf("max(%s) by (__name__)", selectClause),
 		label:    devops.GetMaxAllLabel("ClickHouse PromQL", nHosts),
 		interval: d.Interval.MustRandWindow(duration),
 		step:     "3600",

@@ -117,13 +117,14 @@ the same subset as the VictoriaMetrics generator:
 Not supported: `groupby-orderby-limit`, `lastpoint`, `high-cpu-1`,
 `high-cpu-all`. The `iot` use case is not implemented.
 
-The generator emits standard PromQL, including the `*_over_time` window
-functions (`max(max_over_time(selector[1m])) by (__name__)`), matching the
-form the VictoriaMetrics generator uses. ClickHouse versions that do not
-implement a function used by a query reject it with HTTP 400 and an error
-such as `Function max_over_time is not implemented`. Use the runner's
-`--allow-failed-queries` flag (see below) to let those queries fail without
-aborting the run.
+The ClickHouse PromQL engine does not implement the `*_over_time` window
+functions yet, so the generated queries aggregate the instant vector at
+each step (`max(selector) by (__name__)`) instead of the
+`max(max_over_time(selector[step]))` form the VictoriaMetrics generator
+uses. At each step the engine picks the latest sample per series within
+the lookback window rather than the maximum or average over the full step,
+so results are not numerically comparable with other databases until
+`*_over_time` support lands and the generator is updated.
 
 ## Running queries
 
@@ -138,11 +139,11 @@ $ cat /tmp/clickhouse-promql-cpu-max-all-1-queries.gz | gunzip | \
     --urls=http://localhost:9092
 ```
 
-By default the runner aborts on the first query error. If the ClickHouse
-version under test does not implement a PromQL function used by the
-generated queries, pass `--allow-failed-queries`: failed queries are logged
-to stderr, excluded from the latency statistics, and counted in a summary
-line at the end of the run.
+By default the runner aborts on the first query error. To tolerate queries
+rejected by the endpoint (e.g. a PromQL function the ClickHouse version
+under test does not implement), pass `--allow-failed-queries`: failed
+queries are logged to stderr, excluded from the latency statistics, and
+counted in a summary line at the end of the run.
 
 ```text
 $ cat /tmp/clickhouse-promql-cpu-max-all-1-queries.gz | gunzip | \
